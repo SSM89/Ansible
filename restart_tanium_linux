@@ -1,0 +1,19 @@
+---
+- name: Restart Tanium agent service
+  hosts: your_linux_group
+  become: yes
+
+  tasks:
+    - name: Restart Tanium service
+      ansible.builtin.systemd:
+        name: taniumclient # Service name may vary
+        state: restarted
+        enabled: yes
+      when: ansible_facts['service_mgr'] == 'systemd'
+
+    - name: Restart Tanium service (for non-systemd systems)
+      ansible.builtin.service:
+        name: taniumclient # Service name may vary
+        state: restarted
+        enabled: yes
+      when: ansible_facts['service_mgr'] != 'systemd'
