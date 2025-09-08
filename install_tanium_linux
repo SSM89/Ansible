@@ -1,0 +1,35 @@
+---
+- name: Install Tanium agent on Linux servers
+  hosts: your_linux_group # Replace with your Linux server group name
+  gather_facts: true
+  become: yes
+  vars:
+    tanium_download_url_linux: "https://your_tanium_server.com/TaniumClient_x86_64.rpm" # URL for RHEL/CentOS
+    tanium_server_fqdn: "tanium.yourcompany.com" # Your Tanium server's FQDN
+    tanium_key_hash: "0123456789abcdef0123456789abcdef" # Your Tanium key hash
+
+  tasks:
+    - name: Ensure wget or curl is installed
+      ansible.builtin.package:
+        name: "{{ 'wget' if ansible_facts['os_family'] == 'Debian' else 'curl' }}"
+        state: present
+        
+    - name: Download Tanium agent (Linux)
+      ansible.builtin.get_url:
+        url: "{{ tanium_download_url_linux }}"
+        dest: "/tmp/TaniumClient.rpm"
+        mode: '0644'
+        validate_certs: false # Adjust in a production environment
+      when: ansible_facts['os_family'] == "RedHat" # Or adjust to your system
+      
+    - name: Install Tanium agent RPM package
+      ansible.builtin.yum:
+        name: "/tmp/TaniumClient.rpm"
+        state: present
+      when: ansible_facts['os_family'] == "RedHat" # Or adjust to your system
+
+    - name: Configure the Tanium client (Linux)
+      ansible.builtin.command: |
+        /opt/Tanium/TaniumClient configure -t "{{ tanium_server_fqdn }}" -k "{{ tanium_key_hash }}"
+      args:
+        creates: /opt/Tanium/tanium-init.cfg
