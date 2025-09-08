@@ -1,0 +1,16 @@
+---
+- name: Uninstall Tanium agent on Linux servers
+  hosts: your_linux_group
+  become: yes
+
+  tasks:
+    - name: Stop Tanium service before uninstalling
+      ansible.builtin.service:
+        name: taniumclient # Service name may vary
+        state: stopped
+      ignore_errors: yes # The task won't fail if the service is not running
+
+    - name: Uninstall the Tanium agent package
+      ansible.builtin.package:
+        name: TaniumClient # Package name may vary
+        state: absent
