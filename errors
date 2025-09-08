@@ -1,3 +1,25 @@
+
+ansible-playbook [core 2.15.8]
+  config file = /etc/ansible/ansible.cfg
+  configured module search path = ['/home/runner/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /usr/lib/python3.9/site-packages/ansible
+  ansible collection location = /home/runner/.ansible/collections:/usr/share/ansible/collections
+  executable location = /usr/bin/ansible-playbook
+  python version = 3.9.18 (main, Sep  7 2023, 00:00:00) [GCC 11.4.1 20230605 (Red Hat 11.4.1-2)] (/usr/bin/python3)
+  jinja version = 3.1.2
+  libyaml = True
+Using /etc/ansible/ansible.cfg as config file
+host_list declined parsing /runner/inventory/hosts as it did not pass its verify_file() method
+script declined parsing /runner/inventory/hosts as it did not pass its verify_file() method
+auto declined parsing /runner/inventory/hosts as it did not pass its verify_file() method
+Parsed /runner/inventory/hosts inventory source with ini plugin
+Skipping callback 'awx_display', as we already have a stdout callback.
+Skipping callback 'default', as we already have a stdout callback.
+Skipping callback 'minimal', as we already have a stdout callback.
+Skipping callback 'oneline', as we already have a stdout callback.
+PLAYBOOK: project_update.yml ***************************************************
+3 plays in project_update.yml
+PLAY [Update source tree if necessary] *****************************************+
 <127.0.0.1> ESTABLISH LOCAL CONNECTION FOR USER: root
 <127.0.0.1> EXEC /bin/sh -c 'echo ~root && sleep 0'
 <127.0.0.1> EXEC /bin/sh -c '( umask 77 && mkdir -p "` echo /home/runner/.ansible/tmp `"&& mkdir "` echo /home/runner/.ansible/tmp/ansible-tmp-1757343681.5911043-23-210156382414737 `" && echo ansible-tmp-1757343681.5911043-23-210156382414737="` echo /home/runner/.ansible/tmp/ansible-tmp-1757343681.5911043-23-210156382414737 `" ) && sleep 0'
@@ -28,4 +50,3 @@ fatal: [localhost]: FAILED! => {
             "refspec": "refs/heads/*:refs/remotes/origin/*",…
 PLAY RECAP *********************************************************************
 localhost                  : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
-
