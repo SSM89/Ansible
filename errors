@@ -1,52 +1,127 @@
+---
+- name: Installer TaniumClient depuis GitLab RHEL
+  hosts: all
+  become: yes
 
-ansible-playbook [core 2.15.8]
-  config file = /etc/ansible/ansible.cfg
-  configured module search path = ['/home/runner/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
-  ansible python module location = /usr/lib/python3.9/site-packages/ansible
-  ansible collection location = /home/runner/.ansible/collections:/usr/share/ansible/collections
-  executable location = /usr/bin/ansible-playbook
-  python version = 3.9.18 (main, Sep  7 2023, 00:00:00) [GCC 11.4.1 20230605 (Red Hat 11.4.1-2)] (/usr/bin/python3)
-  jinja version = 3.1.2
-  libyaml = True
-Using /etc/ansible/ansible.cfg as config file
-host_list declined parsing /runner/inventory/hosts as it did not pass its verify_file() method
-script declined parsing /runner/inventory/hosts as it did not pass its verify_file() method
-auto declined parsing /runner/inventory/hosts as it did not pass its verify_file() method
-Parsed /runner/inventory/hosts inventory source with ini plugin
-Skipping callback 'awx_display', as we already have a stdout callback.
-Skipping callback 'default', as we already have a stdout callback.
-Skipping callback 'minimal', as we already have a stdout callback.
-Skipping callback 'oneline', as we already have a stdout callback.
-PLAYBOOK: project_update.yml ***************************************************
-3 plays in project_update.yml
-PLAY [Update source tree if necessary] *****************************************+
-<127.0.0.1> ESTABLISH LOCAL CONNECTION FOR USER: root
-<127.0.0.1> EXEC /bin/sh -c 'echo ~root && sleep 0'
-<127.0.0.1> EXEC /bin/sh -c '( umask 77 && mkdir -p "` echo /home/runner/.ansible/tmp `"&& mkdir "` echo /home/runner/.ansible/tmp/ansible-tmp-1757343681.5911043-23-210156382414737 `" && echo ansible-tmp-1757343681.5911043-23-210156382414737="` echo /home/runner/.ansible/tmp/ansible-tmp-1757343681.5911043-23-210156382414737 `" ) && sleep 0'
-Using module file /usr/lib/python3.9/site-packages/ansible/modules/git.py
-<127.0.0.1> PUT /home/runner/.ansible/tmp/ansible-local-19wuacqstc/tmpuujzskc3 TO /home/runner/.ansible/tmp/ansible-tmp-1757343681.5911043-23-210156382414737/AnsiballZ_git.py
-<127.0.0.1> EXEC /bin/sh -c 'chmod u+x /home/runner/.ansible/tmp/ansible-tmp-1757343681.5911043-23-210156382414737/ /home/runner/.ansible/tmp/ansible-tmp-1757343681.5911043-23-210156382414737/AnsiballZ_git.py && sleep 0'
-<127.0.0.1> EXEC /bin/sh -c '/usr/bin/python3 /home/runner/.ansible/tmp/ansible-tmp-1757343681.5911043-23-210156382414737/AnsiballZ_git.py && sleep 0'
-<127.0.0.1> EXEC /bin/sh -c 'rm -f -r /home/runner/.ansible/tmp/ansible-tmp-1757343681.5911043-23-210156382414737/ > /dev/null 2>&1 && sleep 0'
-fatal: [localhost]: FAILED! => {
-    "changed": false,
-    "cmd": "/usr/bin/git checkout --force https://gitlab-dogen.group.echonet/market-place/ap26362/Tanium-MCO/product-tanium-playbook.git",
-    "invocation": {
-        "module_args": {
-            "accept_hostkey": false,
-            "accept_newhostkey": false,
-            "archive": null,
-            "archive_prefix": null,
-            "bare": false,
-            "clone": true,
-            "depth": null,
-            "dest": "/var/lib/awx/projects/_70518__p_ap26362_tanium_agent_2025",
-            "executable": null,
-            "force": true,
-            "gpg_whitelist": [],
-            "key_file": null,
-            "recursive": true,
-            "reference": null,
-            "refspec": "refs/heads/*:refs/remotes/origin/*",…
-PLAY RECAP *********************************************************************
-localhost                  : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+  vars:
+    install_script: "install_tanium_rhel.sh"
+    local_dir: "{{ playbook_dir }}"
+    tanium_dat: "tanium-init-{{ tanium_env }}.dat"
+    remote_dir: "/tmp/tanium-install"
+
+  tasks:
+    - name: Stopper le service taniumclient
+      systemd_service:
+        state: stopped
+        name: taniumclient
+      tags:
+        - restart
+        - uninstall
+
+    - name: Désinstaller TaniumClient
+      dnf:
+        name: TaniumClient
+        state: absent
+      tags: uninstall
+
+    - name: Définir la version majeure via ansible_distribution_major_version
+      set_fact:
+        rhel_major_version: "{{ ansible_distribution_major_version | int }}"
+      tags: install
+
+    - name: Déinfir le nom du bon RPM à utiliser
+      set_fact:
+        tanium_rpm: "TaniumClient-{{ tanium_version }}.rhe{{ rhel_major_version }}.x86_64.rpm"
+      tags: install
+
+    - name: Debug - RPM sélectionné
+      debug:
+        msg: "Version RHEL : {{ rhel_major_version }} - RPM sélectionné : {{ tanium_rpm }}"
+      tags: install
+
+    - name: Créer le dossier temporaire local
+      file:
+        path: "{{ local_dir }}"
+        state: directory
+        mode: '0755'
+      tags: install
+
+    - name: Vérifier la présence du script install
+      stat: 
+        path: "{{ playbook_dir }}/{{ install_script }}"
+      register: check_script
+
+    - name: Vérifier la présence du fichier DAT
+      stat:
+        path: "{{ playbook_dir }}/{{ tanium_dat }}"
+      register: check_dat
+      tags: install
+
+    - name: Vérifier la présence du fichier RPM
+      stat:
+        path: "{{ playbook_dir }}/{{ tanium_rpm }}"
+      register: check_rpm
+      tags: install
+
+    - name: Echouer si un seul fichier est manquant
+      fail:
+        msg: "Fichier manquant : script ou DAT ou RPM absent dans le dossier {{playbook_dir}}"
+      when: not ( check_script.exists and check_dat.stat.exists and check_rpm.stat.exists )
+      tags: install
+
+    - name: Afficher le chemin du playbook (debug)
+      debug:
+        msg: "Chemin du Playbook : {{ playbook_dir }}"
+      tags: install
+
+    - name: Copier le fichier RPM
+      copy:
+        src: "./{{ tanium_rpm }}"
+        dest: "{{ local_dir }}/{{ tanium_rpm }}"
+        mode: '0755'
+      tags: install
+
+    - name: Copier le fichier DAT
+      copy:
+        src: "./{{tanium_dat}}"
+        dest: "{{ local_dir }}/{{ tanium_dat }}"
+        mode: '0755'
+      tags: install
+
+    - name: lancer le script d'installation et logger la sortie dans installation.log
+      script:
+        executable: "bash"
+        chdir: "{{ local_dir }}"
+        cmd: "{{ local_dir }}/{{ install_script }} {{ tanium_env }} > {{ remote_dir }}/installation.log 2>&1"
+      register: install_result
+      ignore_errors: true
+      tags: install
+
+    - name: Afficher la sortie de l'installation
+      debug:
+        var: install_result.stdout_lines
+      failed_when: install_result.rc > 0
+      tags: install
+
+    - name: Pause pour laisser le temps au service tanium de démarrer
+      pause:
+        seconds: 02
+      tags: install
+
+    - name: Vérifier que le service taniumclient est actif
+      systemd_service:
+        state: started
+        name: taniumclient
+      tags:
+        - install
+        - restart
+
+    - name: Afficher le log d'installation
+      shell: "cat {{ remote_dir }}/installation.log"
+      register: log_output
+      tags: install
+
+    - name: Contenu du log d'installation
+      debug:
+        var: log_output.stdout_lines
+      tags: install
